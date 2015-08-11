@@ -1,0 +1,94 @@
+%    File: TwoBodyCollision.txt    www.MotionGenesis.com
+%    Date: July 8, 2015
+%  Author: Matt Estrada
+% Problem: Symbolic manipulation for long eqns resulting from double body collision
+% 	 		NOT a full dynamic simulation
+% 			Assumption is that angular momentum is conserved before/after impact for two systems:
+% 				(1) System A & B about point An (The contact w/ the wall)
+% 				(2) Body B about point O (Point in reference frame N, collocated with
+%  					pinjoint point Ab at time of impact)
+%--------------------------------------------------------------------
+%   Physical objects
+%NewtonianFrame N                 % Newtonian reference frame
+%RigidBody      A                 % Technical name of body
+%RigidFrame     B                 % Comment
+%Particle       Q                 % Comment
+%Point          O                 % Comment
+%--------------------------------------------------------------------
+%   Mathematical declarations
+Variable    theta''             % Position variables; derivatives
+Variable    phi''             % Reaction forces
+Specified   mA                   % Torque on A
+Constant   dcm                   % Torque on A
+Constant   mB                   % Torque on A
+Constant   L                   % Torque on A
+Constant   IAzz                   % Torque on A
+Constant   lt                   % Torque on A
+Specified   vx                   % Torque on A
+Specified   vy                   % Torque on A
+%--------------------------------------------------------------------
+%   Physical objects
+NewtonianFrame N                 % Newtonian reference frame
+RigidBody      A                 % Technical name of body
+RigidFrame 	   B
+Particle       Bq                 % Comment
+Point          An                 % Comment
+Point 		   Ab
+Point 		   O(N)
+%--------------------------------------------------------------------
+%   Mass and inertia properties
+A.SetMass( mA )
+Bq.SetMass( mB )
+A.SetInertia( Acm, IAxx = 0, IAyy = 0, IAzz  )
+%--------------------------------------------------------------------
+%   Rotational kinematics
+%A.RotateX( N, q1 )
+%A.SetAngularVelocity( N, d_theta*nz> )
+%B.SetAngularVelocity( A, d_phi*nz> )
+A.RotateZ( N, theta )
+B.RotateZ( A, phi )
+
+%--------------------------------------------------------------------
+%   Translational kinematics
+An.Translate( No, 0> )
+Acm.Translate( An, -dcm*ay> )
+Ab.Translate( An, -L*ay> )
+Bq.Translate(Ab, -lt*by>)
+O.Translate(No, -L*ay>)
+%--------------------------------------------------------------------
+%   Kinetic and potential energy, work function, angular momentum, etc.
+KineticEnergy = System.GetKineticEnergy()
+%GravityPotentialEnergy = System.GetForceGravityPotentialEnergy( -g*Ny>, No )
+%MechanicalEnergy = KineticEnergy + GravityPotentialEnergy
+H_post> = System.GetAngularMomentum(No)
+Hb_post> = Bq.GetAngularMomentum(O)
+% Specify these two, assuming no angular velocity
+H_pre> = ( mA*dcm*vx + mB*( (L+lt*cos(phi))*vx + lt*sin(phi)*vy) )*az>
+Hb_pre> = mB*lt*(sin(phi)*vy + cos(phi)*vx)*az>
+
+%L> = System.GetLinearMomentum()
+%P =  System.GetGeneralizedMomentum()
+%--------------------------------------------------------------------
+%   Unit system for input/output conversions
+%SetUnitSystem( kg, meter, sec )
+%--------------------------------------------------------------------
+%   Integration parameters (e.g., integration step and error tolerances)
+%Input  tFinal=10 sec, integStp=0.02 sec, absError=1.0E-08, relError=1.0E-08
+%--------------------------------------------------------------------
+%   Input values for constants (or assign Input when Constant is declared)
+%Input  mA=10 kg,  mQ=2 kg
+%   F = m*a  (translational equations of motion) 
+%BTranslationEquationOfMotion> = B.GetDynamics()
+%Zero[1] = mA*dcm*vx+mB*(L+lt*cos(phi))*vx + mB*(lt*sin(phi))*vy -I*d_theta - mB*(-d_phi*lt*sin(phi)^2+(L+lt*cos(phi))*(d_theta*L-d_phi*lt*cos(phi)))
+%Zero[2] = mB*lt*(sin(phi)*vy - cos(phi)*vx) -lt^2*d_phi*sin(phi)^2-lt*cos(phi)*(d_theta*L-d_phi*lt*cos(phi))
+Zero[1] = Dot(H_pre>-H_post>, az>)
+Zero[2] = Dot(Hb_pre>-Hb_post>, az>)
+
+%--------------------------------------------------------------------
+%   Solve linear equations for list of unknowns
+Solve( Zero, phi', theta')
+
+% Output equations and export to Matlab
+
+Quit
+

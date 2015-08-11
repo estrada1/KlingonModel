@@ -1,0 +1,229 @@
+%    File: 		GeckoImpact.txt    www.MotionGenesis.com
+%    Date: 		March 12, 2015 
+% 	 Revised: 	March 30, 2015
+%  	 Author: 	Matthew Estrada
+%  	 Problem: 	First stab at a dynamic model for impact
+% 				Modeling includes a rigid body with two appendages attached
+% 					one oustretched arm and a tail. 
+% 				Three possible points of impacts: arm, foot tail
+% 				Once the foot contacts the wall, FootAttached binary switches
+% 					to 1, activating the rebound spring
+% 				
+%--------------------------------------------------------------------
+%   Default settings
+%SetDigits( 5 )             % Number of digits displayed for numbers
+%SetAutoEpsilon( 1.0E-14 )  % Rounds to nearest integer
+%SetAutoZee( OFF )          % Turn ON for efficient calculations or large problems (Professional version)
+%SetAutoRhs( OFF )          % Set to ON only if you want explicit results (unlikely)
+%--------------------------------------------------------------------
+%   Physical objects
+NewtonianFrame 	N            	% Newtonian reference frame
+RigidBody      	A               % Technical name of body
+RigidBody     	B               % Arm, negligible mass 
+RigidBody     	C               % Tail, negligible mass 
+Point          	Afoot           % Foot contact point
+Point			Barm(B)			% Arm contact point (snout on gecko)
+Point 			AttachPt		% Attachment Point where feet grip onto wall 
+Point 			Ctail 			% Bottom tail contact point 
+%--------------------------------------------------------------------
+%   Mathematical declarations
+Variable	x''			% Position horizontal to the wall 
+Variable	y''			% Position vertical to the wall
+Variable	gamma''		% Angle between N and A 
+Variable	theta''		% Arm angle 
+Variable	phi'' 		% Tail angle, between A and  
+%Variable   q{1:2}''   % Position variables; derivatives
+%Variable   Fx, Fy     % Reaction forces
+
+Constant    g = 		9.80665 m/sec^2 % Local gravitational acceleration
+Constant	k_foot = 	10000 N/m 		% Foot compliance in compression
+Constant 	k_rebound = 1000 N/m 		% Stiffness of rebound spring 
+Constant 	k_wall = 	10^5 N 			% Stiffness of wall to arm (should be high?)
+Constant	k_arm = 	100 N 			% Arm compliance (rotational) with body
+Constant	k_tail = 	100 N 			% Rotational stiffness of tail
+Constant	l_arm = 	0.5 m  			% Length of arm
+Constant 	l_tail = 	0.5 m 			% Length of tail
+Constant 	mew = 		0.3 m 			% Coefficient of fricton against wall
+
+Specified   T_arm     	% Internal torque on A from arm
+Specified 	T_tail 		% Internal torque on A from tail
+Specified   Fx_foot		% Wall reaction force on foot
+Specified   Fy_foot		% Wall reaction force on foot
+Specified   Fx_arm		% Wall reaction force on arm
+Specified   Fy_arm		% Wall reaction force on arm
+Specified 	Fx_tail 		% Wall reaction force on tail
+Specified 	Fy_tail 	% Wall reaction force on tail
+Specified	AttachPt_x'	% X coordinate of foot attachment point
+Specified	AttachPt_y'	% Y coordinate of foot attachment point
+
+SetGeneralizedSpeed( x', y', gamma', theta', phi' )
+%--------------------------------------------------------------------
+%   Mass and inertia properties
+A.SetMass( mA = 2 kg )
+A.SetInertia( Acm, IAxx = 0.2 kg*m^2, IAyy = 0.3 kg*m^2, IAzz = 0.4 kg*m^2 )
+B.SetMass( mB = .00002 kg )
+B.SetInertia( Bcm, IBxx = 0.000002 kg*m^2, IByy = 0.000002 kg*m^2, IBzz = 0.000002 kg*m^2)
+C.SetMass( mC = .00002 kg )
+C.SetInertia( Ccm, ICxx = 0.000002 kg*m^2, ICyy = 0.000002 kg*m^2, ICzz = 0.000002 kg*m^2)
+%--------------------------------------------------------------------
+%   Rotational kinematics
+A.RotateNegativeZ( N, gamma )
+B.RotateZ( A, theta)
+C.RotateNegativeZ( A, phi )
+%--------------------------------------------------------------------
+%   Translational kinematics
+Afoot.Translate( No, x*Nx> +y*Ny> )     % Sets position, velocity, acceleration
+Acm.Translate(Afoot, 0>)
+AttachPt.SetPosition(Afoot, AttachPt_x*Nx> +AttachPt_y*Ny>)
+Bcm.Translate( Afoot, 0> )          	% Sets position, velocity, acceleration
+Barm.Translate( Afoot, l_arm*By> )      % Sets position, velocity, acceleration
+Ccm.Translate( Afoot, 0> )          	% Sets position, velocity, acceleration
+Ctail.Translate( Afoot, -l_tail*Cy> )   % Sets position, velocity, acceleration
+%--------------------------------------------------------------------
+%   Alternately, if need to set velocity and/or acceleration (rare)
+%Q.SetVelocity( N, someVector> )
+%Q.SetVelocity( N, No )     % Differentiates Q's position vector from No
+%Q.SetVelocity( N, Bo, B )  % Both Q and Bo must be fixed on B
+%Q.SetVelocity( N, Bo, B, coincidentPoint )
+%--------------------------------------------------------------------
+%   Configuration constraints (if any)
+%ZeroConfig[1] = L1*cos(q1) + L2*cos(q2) + L3*cos(q3) - L4
+%ZeroConfig[2] = L1*sin(q1) + L2*sin(q2) + L3*sin(q3)
+%--------------------------------------------------------------------
+%   Motion constraints
+%MotionConstraint[1] = u2 - u1
+%MotionConstraint[2] = Dot( V_Q_N>, Ax> )
+%MotionConstraint[3] = Dot( V_Q_N>, Ay> )
+%SolveDt( MotionConstraint, u3, u4, u5 )
+%--------------------------------------------------------------------
+%   Contact Variables (On/Off for forces)
+
+% Foot Contact
+% 1 if x >0 or foot is contacting the wall 
+FootContact = ceil(sign(x)/2) 
+
+% Arm Contact
+% 1 if x > 0 or arm is contacting the wall
+ArmContact = ceil(sign(dot(Barm.GetPosition(No), Nx>))/2) 
+
+% Tail Contact
+% 1 if x > 0 or tail is contacting the wall
+TailContact = ceil(sign(dot(Ctail.GetPosition(No), Nx>))/2) 
+
+% Foot Attached
+% Desired: 1 if foot had touched wall (x = 0), 0 otherwise
+% 1 if foot is contacted in wall, or AttachPt has displaced from Afoot
+% INitially FootContact flips FootAttached and displaces AttachPt so that
+% 	FootAttached will remain 1 even when Afoot is out of contact with wall
+FootAttached = ceil( sign( Afoot.GetDistance(AttachPt) )/2 + FootContact/2 )
+
+%--------------------------------------------------------------------
+%   Kinematical differential equations (if any)
+%q1' = ( w1*cos(q3) - w2*sin(q3) ) / cos(q2)
+%q2' = w1*sin(q3) + w2*cos(q3)
+AttachPt_x' = -FootAttached*x'
+AttachPt_y' = -FootAttached*y'
+%--------------------------------------------------------------------
+%   Calculate Forces
+Fx_foot = -FootContact*k_foot*x
+Fy_foot = -FootContact*mew*FootContact*sign(dot(Barm.GetVelocity(N),Ny>))
+Fx_tail = -TailContact*k_wall*dot(Ctail.GetPosition(No), Nx>)
+Fx_arm =  -ArmContact*k_wall*dot(Barm.GetPosition(No), Nx>)
+T_arm = -k_arm*theta
+T_tail = k_tail*phi
+Fx_rebound = FootAttached*k_rebound*AttachPt_x
+Fy_rebound = FootAttached*k_rebound*AttachPt_y
+%--------------------------------------------------------------------
+%   Add relevant contact and distance forces
+System.AddForceGravity( -g*Ny> ) 	% Gravity
+Afoot.AddForce( Fx_foot*Nx> )		% Foot contact force
+Barm.AddForce( Fx_arm*Nx> ) 		% Arm contact force
+Afoot.AddForce(Fx_rebound*Nx> +Fy_rebound*Ny>) 	% Rebound spring force
+Ctail.AddForce( Fx_tail*Nx> ) 		% Force at tail contact
+%Q.AddForce( P, actionReactionForce> ) % Must follow Newton's law of action/reaction
+%--------------------------------------------------------------------
+%   Add relevant torques
+B.AddTorque(A, T_arm*Nz>)
+C.AddTorque(A, T_tail*Nz>)
+%A.AddTorque( SomeVector> )
+%B.AddTorque( A, actionReactionTorque> )
+%--------------------------------------------------------------------
+%   F = m*a  (translational equations of motion) 
+%BTranslationEquationOfMotion> = B.GetDynamics()
+%Zero[1] = Dot( BTranslationEquationOfMotion>, Nx> )
+%Zero[2] = Dot( BTranslationEquationOfMotion>, Ny> )
+%--------------------------------------------------------------------
+%   M = DH/Dt (Euler's rotational equations of motion)
+%BRotationEquationOfMotion> = B.GetDynamics( Bcm )
+%Zero[3] = Dot( BRotationEquationOfMotion>, Nz> )
+%--------------------------------------------------------------------
+%   Kane's equations of motion  [Use System.GetDynamics(Kane,Fx,Fy) for reaction forces]
+DynamicsEquations = System.GetDynamicsKane()
+%--------------------------------------------------------------------
+%   Solve linear equations for list of unknowns
+Solve( DynamicsEquations, x'', y'', gamma'', theta'', phi'')
+%--------------------------------------------------------------------
+%   Additional expressions to be output.
+% x1 = Dot( P_O_Q>, Nx> )
+x_arm = Dot( Barm.GetPosition(No), Nx> )
+y_arm = Dot( Barm.GetPosition(No), Ny> )
+x_tail = Dot( Ctail.GetPosition(No), Nx> )
+y_tail = Dot( Ctail.GetPosition(No), Ny> )
+AttachPt_x_WorldFrame = Dot( AttachPt.GetPosition(No), Nx> )
+AttachPt_y_WorldFrame = Dot( AttachPt.GetPosition(No), Ny> )
+Fmag_rebound = sqrt(Fx_rebound^2 + Fy_rebound^2) % Magnitude of rebound spring
+%--------------------------------------------------------------------
+%   Kinetic and potential energy, work function, angular momentum, etc.
+KineticEnergy = System.GetKineticEnergy()
+GravityPotentialEnergy 	= System.GetForceGravityPotentialEnergy( -g*Ny>, No )
+WallPotentialEnergy 	= 1/2*k_wall*x_arm^2*ArmContact + 1/2*k_wall*x_tail^2*TailContact
+ArmPotentialEnergy 		= 1/2*k_arm*theta^2
+FootPotentialEnergy 	= 1/2*k_foot*x^2*FootContact
+TailPotentialEnergy 	= 1/2*k_tail*phi^2
+ReboundPotentialEnergy 	= 1/2*k_rebound*AttachPt.GetDistance(Afoot)^2
+SpringPotentialEnergy 	= FootPotentialEnergy + WallPotentialEnergy + ArmPotentialEnergy + ReboundPotentialEnergy + TailPotentialEnergy
+MechanicalEnergy 		= KineticEnergy + GravityPotentialEnergy + SpringPotentialEnergy
+%H> = System.GetAngularMomentum(Point)
+%L> = System.GetLinearMomentum()
+%P =  System.GetGeneralizedMomentum()
+%--------------------------------------------------------------------
+%   Unit system for input/output conversions
+%SetUnitSystem( kg, meter, sec )
+%--------------------------------------------------------------------
+%   Integration parameters (e.g., integration step and error tolerances)
+%Input  tFinal=1 sec, integStp=0.005 sec, absError=1.0E-08, relError=1.0E-08
+Input  tFinal= 0.25 sec, integStp=0.005 sec, absError=1.0E-07, relError=1.0E-07
+%--------------------------------------------------------------------
+%   Initial values for variables
+Input  x=-1 m, 			x' = 10 m/sec
+Input  y= 4 m, 			y'= -5 m/sec
+Input  gamma= 45 deg, 	gamma'=0 rad/sec 	% Body initial angle
+Input  theta= 0 deg, 	theta'=0 rad/sec 	% Arm initial angle
+Input  phi= 0 deg, 		phi'=0 rad/sec 		% Arm initial angle
+Input  AttachPt_x =0, 	AttachPt_y = 0 		% Attachment point integration starts at zero
+%--------------------------------------------------------------------
+%   Specified expressions
+%--------------------------------------------------------------------
+%   Output quantities when ODE command is issued.
+%Output  	t sec, x m, y m, Fx_foot Newton, theta degree, gamma degree
+Output 		t sec, x m, y m, x_arm m, y_arm m, x_tail m, y_tail m, gamma rad, theta rad, phi rad
+Output		t, Fx_foot, Fx_arm, Fx_tail, T_arm, T_tail, Fmag_rebound
+Output  	t, FootContact, ArmContact, TailContact, FootAttached
+Output 		t, MechanicalEnergy, KineticEnergy, GravityPotentialEnergy, SpringPotentialEnergy
+Output 		t, ReboundPotentialEnergy, FootPotentialEnergy, ArmPotentialEnergy, TailPotentialEnergy, WallPotentialEnergy
+OutputPlot  x, y
+OutputPlot	t, x, y, x_arm, y_arm
+OutputPlot 	t, theta, gamma, phi
+OutputPlot 	t, FootContact, ArmContact, TailContact, FootAttached
+OutputPlot	t, Fx_foot, Fx_arm, Fx_tail, T_arm, T_tail, Fmag_rebound
+OutputPlot	t, MechanicalEnergy, KineticEnergy, GravityPotentialEnergy, SpringPotentialEnergy
+OutputPlot 	t, ReboundPotentialEnergy, FootPotentialEnergy, ArmPotentialEnergy, TailPotentialEnergy, WallPotentialEnergy	
+%OutputPlot 	t, AttachPt_x, AttachPt_y, AttachPt_x_WorldFrame, AttachPt_y_WorldFrame
+%--------------------------------------------------------------------
+%   Output quantities for animation with Animake
+%Animate( N, No, A, B, C )
+%--------------------------------------------------------------------
+%   C/Matlab/Fortran code or immediate numerical solution.
+%   ODE( Zero, listOfVariablesToSolve ) [A=0,3,1; B=2,0,-.5] filename.m
+ODE() GeckoImpact.m %Filename
+Quit
