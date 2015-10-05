@@ -1,0 +1,36 @@
+
+GeckoImpact
+- March 2015 
+- Preliminary model of rigid body impacting wall 
+- Trying to reproduce rolling behavior, but a single rigid body didn't seem to cut it
+
+TwoBodyCollision
+- July 8, 2015 
+- Using MG as a symbolic manipulator for an analytical solution
+- Two link rigid-body sticks inelastically to the wall at the point of contact
+- Throw symbolic solution into Matlab (and change some notation to make it compatible) to plot kinetic energy lost and impulse in different directions
+
+BerkeleyImpact_DropTest
+- July 2015 
+- Matching this stuff up to ATI drop test data 
+- Still had tail attached 
+
+BerkeleyImpact_PerchTest 
+- August 2015 
+- Model of Klingon 2.0 used to match to force data in 2D now 
+
+BerkeleyImpact_LongBody
+- Sept 23 2015
+- Added x_Ccm, y_Ccm
+- Tail recessed down below landing gear as we had proposed months ago
+- Tried to get some linear damping to reduce forces with the tail, but I think the mass is way too small to have any significant effect. 
+
+BerkeleyImpact_TallBody
+- Sept 24 2015 
+- Giving a long 'nose', or extension up above the landing gear
+- Tail mounted directly behind landing gear again
+- Idea is to use the tail for rotational resistance rather than linear. Take advantage of the long lever arm there. 
+
+
+
+

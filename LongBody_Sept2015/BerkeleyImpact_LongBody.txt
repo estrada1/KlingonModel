@@ -1,8 +1,8 @@
-%    File: 		BerkeleyImpact_ImpactTest.txt    www.MotionGenesis.com
-%    Date: 		August 4, 2015 
+%    File: 		BerkeleyImpact_LongBody.txt    www.MotionGenesis.com
+%    Date: 		September 23, 2015 
 % 	 Revised: 	
 %  	 Author: 	Matthew Estrada
-%  	 Problem: 	Trying to tune normal/shear parameters for KlingOn Impact. Testing against perches 
+%  	 Problem: 	Elongating the body to get more interesting dynamics with the tail
 % 				
 %--------------------------------------------------------------------
 %   Default settings
@@ -42,10 +42,13 @@ Constant	b_hardstop = 25 N/m/s 		% Body's stiff compliance in compression
 Constant 	k_rebound = 1/.07 N/m 		% Stiffness of rebound spring 
 Constant 	Fpre_rebound = 2 N 			% Preload force of rebound spring
 
+Constant 	d_body = 	5 cm 			% Elongating the body and attaching tail at the bottom
+
 %Constant 	k_wall = 	10^5 N 			% Stiffness of wall to arm (should be high?)
 %Constant	k_arm = 	100 N 			% Arm compliance (rotational) with body
 %Constant	l_arm = 	0.5 m  			% Length of arm
-Constant	k_tail = 	0 N 			% Rotational stiffness of tail
+Constant	k_tail = 	0.1 N 			% Rotational stiffness of tail
+Constant 	b_tail = 	0.01 N/s 			% Damping coefficient of tail rotational joint 
 Constant 	l_tail = 	0.23 m 			% Length of tail
 Constant 	mew = 		-0.1  			% Coefficient of fricton against wall
 Constant 	l_rebound = 0.02 m 			% Resting length of rebound spring
@@ -54,6 +57,7 @@ Constant 	k_foam = 	85 N/m 			% Foam spring stiffness
 Constant 	b_foam = 	2.5 N*sec/m %2.1 N*sec/m 		% Foam damping coeff
 Constant 	eps_vel = 	0.000001
 
+Constant 	phin = 		-50 deg 			% resting position for tail
 
 %Specified   T_arm     	% Internal torque on A from arm
 Specified 	T_tail 		% Internal torque on A from tail
@@ -94,9 +98,9 @@ AttachPt.SetPosition(Afoot, AttachPt_x*Nx> +AttachPt_y*Ny>)
 AfoamTop.Translate(Afoot, d_foam*ay>)
 AfoamBottom.Translate(Afoot, -d_foam*ay>)
 AhardstopTop.Translate(Acm,  Awidth*ax> + d_foam*ay>)
-AhardstopBottom.Translate(Acm,  Awidth*ax> - d_foam*ay>)
-Ccm.Translate( Acm, 0> )          		% Sets position, velocity, acceleration
-Q.Translate( Afoot, -l_tail*Cx> )   	% Sets position, velocity, acceleration
+AhardstopBottom.Translate(Acm,  Awidth*ax> - (d_body+d_foam)*ay>)
+Ccm.Translate( Acm, -(d_body+d_foam)*ay> )          		% Sets position, velocity, acceleration
+Q.Translate( Ccm, -l_tail*Cx> )   	% Sets position, velocity, acceleration
 %--------------------------------------------------------------------
 %   Alternately, if need to set velocity and/or acceleration (rare)
 %Q.SetVelocity( N, someVector> )
@@ -179,7 +183,7 @@ Fx_tail = -TailContact*k_hardstop*dot(Q.GetPosition(No), Nx>)
 Fy_tail = mew*( -sign( dot( Q.GetVelocity(N), Ny> ) ) )*Fx_tail
 
 % 150:1 pololu gear motor stall torque is 0.28 Nm
-T_tail = -k_tail*phi
+T_tail = -k_tail*(phi-phin) - b_tail*phi'
 
 % This last, complicated expression is a way to find the angle at the preloaded rebound spring force is acting
 rebound_x = dot(AttachPt.GetPosition(Acm), Nx>)
@@ -222,6 +226,8 @@ y_FoamTop =  Dot( AfoamTop.GetPosition(No), Ny> )
 x_FoamBottom =  Dot( AfoamBottom.GetPosition(No), Nx> )
 y_FoamBottom =  Dot( AfoamBottom.GetPosition(No), Ny> )
 x_hardstop = dot(AhardstopTop.GetPosition(No), Nx>)
+x_Ccm =  Dot( Ccm.GetPosition(No), Nx> )
+y_Ccm =  Dot( Ccm.GetPosition(No), Ny> )
 
 AttachPt_x_WorldFrame = Dot( AttachPt.GetPosition(No), Nx> )
 AttachPt_y_WorldFrame = Dot( AttachPt.GetPosition(No), Ny> )
@@ -235,11 +241,14 @@ Fy_contact = Fy_rebound + Fy_fricTop + Fy_fricBottom
 %   Kinetic and potential energy, work function, angular momentum, etc.
 KineticEnergy = System.GetKineticEnergy()
 GravityPotentialEnergy 	= System.GetForceGravityPotentialEnergy( -g*Ny>, No )
+KineticEnergy_body = A.GetKineticEnergy(); 
+KineticEnergy_tail = Q.GetKineticEnergy(); 
+
 %WallPotentialEnergy 	= 1/2*k_wall*x_arm^2*ArmContact + 1/2*k_wall*x_tail^2*TailContact
 %FootPotentialEnergy 	= 1/2*k_foot*x^2*FootContact
-TailPotentialEnergy 	= 1/2*k_tail*phi^2
+%TailPotentialEnergy 	= 1/2*k_tail*phi^2
 ReboundPotentialEnergy 	= 1/2*k_rebound*AttachPt.GetDistance(Afoot)^2
-SpringPotentialEnergy 	= ReboundPotentialEnergy + TailPotentialEnergy
+SpringPotentialEnergy 	= ReboundPotentialEnergy
 MechanicalEnergy 		= KineticEnergy + GravityPotentialEnergy %+ SpringPotentialEnergy
 %H> = System.GetAngularMomentum(Point)
 %L> = System.GetLinearMomentum()
@@ -257,7 +266,7 @@ Input  tFinal= 1 sec, integStp=0.005 sec, absError=1.0E-07, relError=1.0E-07
 Input  x=-.1 m, 			x' = 1 m/sec
 Input  y= 4 m, 				y'= .5 m/sec
 Input  gamma= -15 deg, 		gamma'=0 rad/sec 	% Body initial angle
-Input  phi= 70 deg, 		phi'=0 rad/sec 		% Tail initial angle
+Input  phi= -30 deg , 		phi'=0 rad/sec 		% Tail initial angle
 Input  AttachPt_x =0, 		AttachPt_y = 0 		% Attachment point integration starts at zero
 %--------------------------------------------------------------------
 %   Specified expressions
@@ -265,10 +274,10 @@ Input  AttachPt_x =0, 		AttachPt_y = 0 		% Attachment point integration starts a
 %   Output quantities when ODE command is issued.
 %Output  	t sec, x m, y m, Fx_foot Newton, theta degree, gamma degree
 Output 		t sec, x m, y m, x_Acm m, y_Acm m, x_tail m, y_tail m, gamma rad, phi rad 
-Output 		x_FoamTop m, y_FoamTop m, x_FoamBottom m, y_FoamBottom m, AttachPt_x_WorldFrame m, AttachPt_y_WorldFrame m, x_hardstop m
+Output 		x_FoamTop m, y_FoamTop m, x_FoamBottom m, y_FoamBottom m, AttachPt_x_WorldFrame m, AttachPt_y_WorldFrame m, x_hardstop m, x_Ccm m, y_Ccm m
 Output		t, Ffoam_top, Ffoam_bottom, Fx_tail, T_tail, Fx_rebound, Fy_rebound, Fx_contact, Fy_contact, Fy_fricTop, Fy_fricBottom, F_hardstopTop, F_hardstopBottom
 Output  	t, FoamContactTop, FoamContactBottom, TailContact, FootAttached
-Outputplot t, MechanicalEnergy
+Output  	KineticEnergy J, KineticEnergy_body J, KineticEnergy_tail J
 % OutputPlot t sec, FcontacT Newton, FoamContactTop, FoamContactBottom, TailContact
 % OutputPlot t sec, x_hardstop m
 %Output 		t, MechanicalEnergy, KineticEnergy, GravityPotentialEnergy, SpringPotentialEnergy
@@ -287,5 +296,5 @@ Outputplot t, MechanicalEnergy
 %--------------------------------------------------------------------
 %   C/Matlab/Fortran code or immediate numerical solution.
 %   ODE( Zero, listOfVariablesToSolve ) [A=0,3,1; B=2,0,-.5] filename.m
-ODE() BerkeleyImpact_PerchTest.m %Filename
+ODE() KlingonModel/BerkeleyImpact_LongBody.m %Filename
 Quit

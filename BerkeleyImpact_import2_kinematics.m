@@ -1,4 +1,4 @@
-function [x_FoamTop,y_FoamTop,x_FoamBottom,y_FoamBottom,AttachPt_x_WorldFrame,AttachPt_y_WorldFrame, x_hardstop] = BerkeleyImpact_import2_kinematics(filename, startRow, endRow)
+function [x_FoamTop,y_FoamTop,x_FoamBottom,y_FoamBottom,AttachPt_x_WorldFrame,AttachPt_y_WorldFrame, x_hardstop, x_Ccm, y_Ccm, x_top, y_top, x_bottom, y_bottom ] = BerkeleyImpact_import2_kinematics(filename, startRow, endRow)
 %IMPORTFILE Import numeric data from a text file as column vectors.
 %   [X_FOAMTOP,Y_FOAMTOP,X_FOAMBOTTOM,Y_FOAMBOTTOM,ATTACHPT_X_WORLDFRAME,ATTACHPT_Y_WORLDFRAME]
 %   = IMPORTFILE(FILENAME) Reads data from text file FILENAME for the
@@ -24,7 +24,7 @@ end
 
 %% Read columns of data as strings:
 % For more information, see the TEXTSCAN documentation.
-formatSpec = '%14s%15s%15s%15s%15s%17s%[^\n\r]';
+formatSpec = '%14s%15s%15s%15s%15s%17s%15s%15s%15s%15s%15s%15s%[^\n\r]';
 
 %% Open the text file.
 fileID = fopen(filename,'r');
@@ -55,7 +55,7 @@ for col=1:length(dataArray)-1
 end
 numericData = NaN(size(dataArray{1},1),size(dataArray,2));
 
-for col=[1,2,3,4,5,6,7]
+for col=[1,2,3,4,5,6,7,8,9, 10, 11, 12, 13]
     % Converts strings in the input cell array to numbers. Replaced non-numeric
     % strings with NaN.
     rawData = dataArray{col};
@@ -96,5 +96,10 @@ y_FoamBottom = cell2mat(raw(:, 4));
 AttachPt_x_WorldFrame = cell2mat(raw(:, 5));
 AttachPt_y_WorldFrame = cell2mat(raw(:, 6));
 x_hardstop = cell2mat(raw(:, 7));
-
+x_Ccm = cell2mat(raw(:, 8));
+y_Ccm = cell2mat(raw(:, 9));
+x_top = cell2mat(raw(:, 10));
+y_top =  cell2mat(raw(:, 11));
+x_bottom =  cell2mat(raw(:, 12));
+y_bottom = cell2mat(raw(:, 13));
 

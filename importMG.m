@@ -8,9 +8,12 @@
 function MGworkspace = importMG(file)
 
 [t,x,y,x_Acm,y_Acm,x_tail,y_tail,gam,phi] = BerkeleyImpact_import1_kinematics([file '.1']);
-[x_FoamTop,y_FoamTop,x_FoamBottom,y_FoamBottom,AttachPt_x_WorldFrame,AttachPt_y_WorldFrame, x_hardstop] = BerkeleyImpact_import2_kinematics([file '.2']);
+[x_FoamTop,y_FoamTop,x_FoamBottom,y_FoamBottom,AttachPt_x_WorldFrame,AttachPt_y_WorldFrame, x_hardstop, x_Ccm, y_Ccm, x_top, y_top, x_bottom, y_bottom] = BerkeleyImpact_import2_kinematics([file '.2']);
 [t,Ffoam_top,Ffoam_bottom,Fx_tail,T_tail,Fx_rebound, Fy_rebound, Fx_contact, Fy_contact, Fy_fricTop, Fy_fricBottom,F_hardstopTop, F_hardstopBottom] = BerkeleyImpact_import3_forces([file '.3']);
 [t,FoamContactTop,FoamContactBottom,TailContact,FootAttached] = BerkeleyImpact_import4_contact([file '.4']);
+[KineticEnergy,KineticEnergy_body,KineticEnergy_tail,E_rebound,E_tail, GravityPotentialEnergy] = BerkeleyImpact_import5_energy([file '.5']);
+[vx,vy,vgamma,vphi,ax,ay,agamma,aphi] = BerkeleyImpact_import6_vel_acc([file '.6']);
+[Lx_body,Ly_body,H_body,Lx_tail,Ly_tail,H_tail] = BerkeleyImpact_import7_Momentum([file '.7']); 
 
 save(file);
 MGworkspace = file; 

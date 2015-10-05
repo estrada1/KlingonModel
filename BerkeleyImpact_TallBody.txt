@@ -1,0 +1,308 @@
+%    File: 		BerkeleyImpact_TallBody.txt    www.MotionGenesis.com
+%    Date: 		September 24, 2015 
+% 	 Revised: 	
+%  	 Author: 	Matthew Estrada
+%  	 Problem: 	Making the body "taller" above the landing gear and tail. The hope is to absorb some energy and engagew with the wall earlier
+% 				
+%--------------------------------------------------------------------
+%   Default settings
+%SetDigits( 5 )             % Number of digits displayed for numbers
+%SetAutoEpsilon( 1.0E-14 )  % Rounds to nearest integer
+%SetAutoZee( OFF )          % Turn ON for efficient calculations or large problems (Professional version)
+%SetAutoRhs( OFF )          % Set to ON only if you want explicit results (unlikely)
+SetWorkingDirectory KlingOnModel
+%--------------------------------------------------------------------
+%   Physical objects
+NewtonianFrame 	N            		% Newtonian reference frame
+RigidBody      	A               	% Body
+RigidBody     	C               	% Tail, negligible mass 
+Point          	Afoot(A)        	% Foot contact point
+Point 			Ac(A) 				% Tail attachment point
+%Point			Barm(B)				% Arm contact point (snout on gecko)
+Point 			AttachPt			% Attachment Point where feet grip onto wall 
+Point 			Cq 					% Bottom tail contact point 
+Point 			AfoamTop(A) 		% Top foam contact point
+Point 			AfoamBottom(A) 		% Bottom foam contact point
+Point 			AhardstopTop(A) 	% Hard stop when foam completely compresses
+Point 			AhardstopBottom(A) 	% Hard stop when foam completely compresses
+Particle 		Q 					% Particle at end of tail
+
+%--------------------------------------------------------------------
+%   Mathematical declarations
+Variable	x''			% Position horizontal to the wall 
+Variable	y''			% Position vertical to the wall
+Variable	gamma''		% Angle between N and A 
+Variable	phi'' 		% Tail angle, between A and  
+
+Constant 	Awidth = 	3 cm 			% A's width (to offset foam and rebound)
+Constant 	d_foam =  	3 cm 			% Foam's distance from center of gripper pair
+Constant    g = 		9.80665 m/sec^2 % Local gravitational acceleration
+Constant	k_hardstop = 10000 N/m 		% Body's stiff compliance in compression
+Constant	b_hardstop = 25 N/m/s 		% Body's stiff compliance in compression
+Constant 	k_rebound = 1/.07 N/m 		% Stiffness of rebound spring 
+Constant 	Fpre_rebound = 4 N 			% Preload force of rebound spring
+
+Constant 	d_body = 	10 cm 			% Elongating the body above the landing gear
+
+Constant	k_top = 	100 N/m			% Spring stiffness of top contact
+Constant 	b_top = 	1 N/m/s 		% Damping in top contact
+%Constant	l_arm = 	0.5 m  			% Length of arm
+Constant	k_tail = 	1 N 			% Rotational stiffness of tail
+Constant 	b_tail = 	0.01 N/s 			% Damping coefficient of tail rotational joint 
+Constant 	l_tail = 	0.23 m 			% Length of tail
+Constant 	mewTop = 	-0.1  			% Coefficient of fricton against wall at top contact
+Constant 	mewBottom = -0.1 			% Coefficient of fricton against wall at bottom contact
+Constant 	l_rebound = 0.02 m 			% Resting length of rebound spring
+Constant 	l_foam = 	0.02 m 			% Resting length of foam 
+Constant 	k_foam = 	85 N/m 			% Foam spring stiffness 
+Constant 	b_foam = 	2.5 N*sec/m 	% Foam damping coeff
+Constant 	eps_vel = 	0.000001
+
+Constant 	phin = 		90 deg 			% resting position for tail
+
+%Specified   T_arm     	% Internal torque on A from arm
+Specified 	T_tail 		% Internal torque on A from tail
+Specified 	Ffoam_top 	% Top foam's force on body A
+Specified 	Ffoam_bottom % Bottom foam's force on body A
+%Specified   Fx_foot		% Wall reaction force on foot
+%Specified   Fy_foot		% Wall reaction force on foot
+Specified   Fx_arm		% Wall reaction force on arm
+Specified   Fy_arm		% Wall reaction force on arm
+Specified 	Fx_tail 	% Wall reaction force on tail
+Specified 	Fy_tail 	% Wall reaction force on tail
+Specified	AttachPt_x'	% X coordinate of foot attachment point
+Specified	AttachPt_y'	% Y coordinate of foot attachment point
+Specified 	F_hardstop 	% Wall reaction force on foot 
+
+SetGeneralizedSpeed( x', y', gamma', phi' )
+%--------------------------------------------------------------------
+%   Mass and inertia properties
+A.SetMass( mA = .2 kg )
+A.SetInertia( Acm, IAxx = 0 kg*m^2, IAyy = 0 kg*m^2, IAzz = 2.90e-4  kg*m^2 )
+C.SetMass( mC = .00001 kg )
+C.SetInertia( Ccm, ICxx = 0.000002 kg*m^2, ICyy = 0.000002 kg*m^2, ICzz = 0.000002 kg*m^2)
+Q.SetMass( mQ = .02 kg )
+%--------------------------------------------------------------------
+%   Rotational kinematics
+A.RotateZ( N, gamma )
+%B.RotateZ( A, theta)
+C.RotateZ( A, phi )
+%--------------------------------------------------------------------
+%   Translational kinematics
+Afoot.Translate( No, x*Nx> +y*Ny> )     % Sets position, velocity, acceleration
+Acm.Translate(Afoot, -(l_foam + Awidth)*ax>)
+AttachPt.SetPosition(Afoot, AttachPt_x*Nx> +AttachPt_y*Ny>)
+%Bcm.Translate( Afoot, 0> )          	% Sets position, velocity, acceleration
+%Barm.Translate( Afoot, l_arm*By> )     % Sets position, velocity, acceleration
+AfoamTop.Translate(Afoot, d_foam*ay>)
+AfoamBottom.Translate(Afoot, -d_foam*ay>)
+AhardstopTop.Translate(Acm,  Awidth*ax> + (d_body+d_foam)*ay>) % MAKING THE BODY "TALL"
+AhardstopBottom.Translate(Acm,  Awidth*ax> - d_foam*ay>)
+Ccm.Translate( Acm, 0*ay> )          		% Sets position, velocity, acceleration
+Q.Translate( Ccm, -l_tail*Cx> )   	% Sets position, velocity, acceleration
+%--------------------------------------------------------------------
+%   Alternately, if need to set velocity and/or acceleration (rare)
+%Q.SetVelocity( N, someVector> )
+%Q.SetVelocity( N, No )     % Differentiates Q's position vector from No
+%Q.SetVelocity( N, Bo, B )  % Both Q and Bo must be fixed on B
+%Q.SetVelocity( N, Bo, B, coincidentPoint )
+%--------------------------------------------------------------------
+%   Configuration constraints (if any)
+%ZeroConfig[1] = L1*cos(q1) + L2*cos(q2) + L3*cos(q3) - L4
+%ZeroConfig[2] = L1*sin(q1) + L2*sin(q2) + L3*sin(q3)
+%--------------------------------------------------------------------
+%   Motion constraints
+%MotionConstraint[1] = u2 - u1
+%MotionConstraint[2] = Dot( V_Q_N>, Ax> )
+%MotionConstraint[3] = Dot( V_Q_N>, Ay> )
+%SolveDt( MotionConstraint, u3, u4, u5 )
+%--------------------------------------------------------------------
+%   Contact Variables (On/Off for forces)
+
+% Foot Contact
+% 1 if x >0 or foot is contacting the wall 
+FootContact = ceil(sign(x)/2) 
+
+% Foam Contact
+% 1 if x >0 or foam is contacting the wall 
+FoamContactTop = ceil( sign( dot(AfoamTop.GetPosition(No), Nx>) )/2 )
+FoamContactBottom = ceil( sign( dot(AfoamBottom.GetPosition(No), Nx>) )/2 )
+
+% Hard Stop 
+% 1 if x >0 or foot is contacting the wall 
+HardstopContactTop = ceil(sign( dot(AhardstopTop.GetPosition(No), Nx>) )/2) 
+HardstopContactBottom = ceil(sign( dot(AhardstopBottom.GetPosition(No), Nx>) )/2) 
+
+% Arm Contact
+% 1 if x > 0 or arm is contacting the wall
+% ArmContact = ceil(sign(dot(Barm.GetPosition(No), Nx>))/2) 
+
+% Tail Contact
+% 1 if x > 0 or tail is contacting the wall
+TailContact = ceil(sign(dot(Q.GetPosition(No), Nx>))/2) 
+
+% Foot Attached
+% Desired: 1 if foot had touched wall (x = 0), 0 otherwise
+% 1 if foot is contacted in wall, or AttachPt has displaced from Afoot
+% Initially FootContact flips FootAttached and displaces AttachPt so that
+% 	FootAttached will remain 1 even when Afoot is out of contact with wall
+FootAttached = ceil( sign( Afoot.GetDistance(AttachPt) )/2 + FootContact/2 )
+
+%--------------------------------------------------------------------
+%   Kinematical differential equations (if any)
+
+% AttachPt is a trick to create attachment point for adhesive attachment
+AttachPt_x' = -FootAttached*x'
+AttachPt_y' = -FootAttached*y'
+%--------------------------------------------------------------------
+%   Calculate Forces
+% 	Convention is to incorporate direction (the sign) here (eg +/- Nx)
+
+Ffoam_top = -FoamContactTop*(k_foam*dot(AfoamTop.GetPosition(No),Nx>) + b_foam*dot(AfoamTop.GetVelocity(N),Nx>))
+Ffoam_bottom = -FoamContactBottom*(k_foam*dot(AfoamBottom.GetPosition(No),Nx>) + b_foam*dot(AfoamBottom.GetVelocity(N),Nx>))
+F_hardstopTop = -HardstopContactTop*(k_top*dot(AhardstopTop.GetPosition(No),Nx>) + b_hardstop*dot(AhardstopTop.GetVelocity(N), Nx>))
+F_hardstopBottom = -HardstopContactBottom*(k_hardstop*dot(AhardstopBottom.GetPosition(No),Nx>) + b_hardstop*dot(AhardstopBottom.GetVelocity(N), Nx>))
+
+%Fy_fricTop = (Ffoam_top+F_hardstopTop)*mew*( -sign( dot( AhardstopTop.GetVelocity(N), Ny> ) ) )
+%Fy_fricBottom = (Ffoam_bottom+F_hardstopBottom)*mew*( -sign( dot( AhardstopBottom.GetVelocity(N), Ny> ) ) )
+
+% Sliding friction 
+vTop = dot( AhardstopTop.GetVelocity(N), Ny> )
+vBottom = dot( AhardstopBottom.GetVelocity(N), Ny> )
+Fy_fricTop = (F_hardstopTop)*mewTop*( -vTop/(abs(vTop) + .000001) )
+Fy_fricBottom = (Ffoam_bottom+F_hardstopBottom)*mewBottom*( -vBottom/(abs(vBottom) + .000001) )
+
+% Tail normal/friction force
+Fx_tail = -TailContact*(k_hardstop*dot(Q.GetPosition(No), Nx>) + b_hardstop*dot(Q.GetVelocity(N),Nx>) ) 
+Fy_tail = mewBottom*( -sign( dot( Q.GetVelocity(N), Ny> ) ) )*Fx_tail
+
+% 150:1 pololu gear motor stall torque is 0.28 Nm
+T_tail = -k_tail*(phi-phin) - b_tail*phi'
+
+% This last, complicated expression is a way to find the angle at the preloaded rebound spring force is acting
+%rebound_x = (1 - FootContact)*dot(AttachPt.GetPosition(Afoot), Nx>)
+rebound_x = dot(AttachPt.GetPosition(Afoot), Nx>)
+rebound_y = dot(AttachPt.GetPosition(Afoot), Ny>)
+Fx_rebound = FootAttached*(k_rebound*rebound_x + Fpre_rebound*rebound_x/(AttachPt.GetDistance(Afoot)+.00000001))
+Fy_rebound = FootAttached*(k_rebound*rebound_y + Fpre_rebound*rebound_y/(AttachPt.GetDistance(Afoot)+.00000001))
+
+%--------------------------------------------------------------------
+%   Add relevant contact and distance forces
+System.AddForceGravity( -g*Ny> ) 	% Gravity
+Afoot.AddForce(Fx_rebound*Nx> +Fy_rebound*Ny>) 	% Rebound spring force
+%AfoamTop.AddForce(Ffoam_top*Ax>)
+%AfoamBottom.AddForce(Ffoam_bottom*Ax>)
+AhardstopTop.AddForce(F_hardstopTop*Nx> + Fy_fricTop*Ny>)
+AhardstopBottom.AddForce(F_hardstopBottom*Nx> + Fy_fricBottom*Ny>)
+Q.AddForce(Fx_tail*Nx>+Fy_tail*Ny>)
+
+
+%--------------------------------------------------------------------
+%   Add relevant torques
+
+C.AddTorque(A, T_tail*Nz>)
+
+%--------------------------------------------------------------------
+%   Kane's equations of motion  [Use System.GetDynamics(Kane,Fx,Fy) for reaction forces]
+DynamicsEquations = System.GetDynamicsKane()
+%--------------------------------------------------------------------
+%   Solve linear equations for list of unknowns
+Solve( DynamicsEquations, x'', y'', gamma'', phi'')
+%--------------------------------------------------------------------
+%   Additional expressions to be output.
+x_tail = Dot( Q.GetPosition(No), Nx> )
+y_tail = Dot( Q.GetPosition(No), Ny> )
+x_Acm =  Dot( Acm.GetPosition(No), Nx> )
+y_Acm =  Dot( Acm.GetPosition(No), Ny> )
+x_FoamTop =  Dot( AfoamTop.GetPosition(No), Nx> )
+y_FoamTop =  Dot( AfoamTop.GetPosition(No), Ny> )
+x_FoamBottom =  Dot( AfoamBottom.GetPosition(No), Nx> )
+y_FoamBottom =  Dot( AfoamBottom.GetPosition(No), Ny> )
+x_hardstop = dot(AhardstopTop.GetPosition(No), Nx>)
+x_Ccm =  Dot( Ccm.GetPosition(No), Nx> )
+y_Ccm =  Dot( Ccm.GetPosition(No), Ny> )
+x_top =  Dot( AhardstopTop.GetPosition(No), Nx> )
+y_top =  Dot( AhardstopTop.GetPosition(No), Ny> )
+x_bottom =  Dot( AhardstopBottom.GetPosition(No), Nx> )
+y_bottom =  Dot( AhardstopBottom.GetPosition(No), Ny> )
+
+AttachPt_x_WorldFrame = Dot( AttachPt.GetPosition(No), Nx> )
+AttachPt_y_WorldFrame = Dot( AttachPt.GetPosition(No), Ny> )
+Fmag_rebound = sqrt(Fx_rebound^2 + Fy_rebound^2) % Magnitude of rebound spring
+
+% Fcontact is what would be measured if the wall were a force plate
+Fx_contact = Ffoam_top + Ffoam_bottom + Fx_tail + Fx_rebound + F_hardstopTop + F_hardstopBottom
+Fy_contact = Fy_rebound + Fy_fricTop + Fy_fricBottom
+
+
+%--------------------------------------------------------------------
+%   Kinetic and potential energy, work function, angular momentum, etc.
+
+% Broad terms for energy
+KineticEnergy = System.GetKineticEnergy()
+GravityPotentialEnergy 	= System.GetForceGravityPotentialEnergy( -g*Ny>, No )
+KineticEnergy_body = A.GetKineticEnergy()
+KineticEnergy_tail = Q.GetKineticEnergy()
+
+% Specific Components
+E_rebound = ( Fpre_rebound + 1/2*k_rebound*AttachPt.GetDistance(Afoot) )*(AttachPt.GetDistance(Afoot))
+E_tail = 1/2*k_tail*(phi-phin)^2
+
+
+%WallPotentialEnergy 	= 1/2*k_wall*x_arm^2*ArmContact + 1/2*k_wall*x_tail^2*TailContact
+%FootPotentialEnergy 	= 1/2*k_foot*x^2*FootContact
+%TailPotentialEnergy 	= 1/2*k_tail*phi^2
+
+ReboundPotentialEnergy 	= 1/2*k_rebound*sqrt(rebound_x^2 + rebound_y^2)
+SpringPotentialEnergy 	= ReboundPotentialEnergy
+MechanicalEnergy 		= KineticEnergy + GravityPotentialEnergy %+ SpringPotentialEnergy
+%H> = System.GetAngularMomentum(Point)
+%L> = System.GetLinearMomentum()
+%P =  System.GetGeneralizedMomentum()
+
+L_body> = A.GetLinearMomentum()
+Lx_body = Dot( L_body>,Nx> )
+Ly_body = Dot( L_body>,Ny> )
+H_body = Dot( A.GetAngularMomentum(No),Nz> )
+
+L_tail> = Q.GetLinearMomentum()
+Lx_tail = Dot( L_tail>,Nx> )
+Ly_tail = Dot( L_tail>,Ny> )
+H_tail = Dot( Q.GetAngularMomentum(No),Nz> )
+
+
+%--------------------------------------------------------------------
+%   Unit system for input/output conversions
+%SetUnitSystem( kg, meter, sec )
+%--------------------------------------------------------------------
+%   Integration parameters (e.g., integration step and error tolerances)
+%Input  tFinal=1 sec, integStp=0.005 sec, absError=1.0E-08, relError=1.0E-08
+Input  tFinal= 0.5 sec, integStp=0.005 sec, absError=1.0E-07, relError=1.0E-07
+%--------------------------------------------------------------------
+%   Initial values for variables
+Input  x=-.1 m, 			x' = 1 m/sec
+Input  y= 4 m, 				y'= .25 m/sec
+Input  gamma= -35 deg, 		gamma'=0 rad/sec 	% Body initial angle
+Input  phi= 90 deg , 		phi'=0 rad/sec 		% Tail initial angle
+Input  AttachPt_x =0, 		AttachPt_y = 0 		% Attachment point integration starts at zero
+%--------------------------------------------------------------------
+%   Specified expressions
+%--------------------------------------------------------------------
+%   Output quantities when ODE command is issued.
+%Output  	t sec, x m, y m, Fx_foot Newton, theta degree, gamma degree
+Output 		t sec, x m, y m, x_Acm m, y_Acm m, x_tail m, y_tail m, gamma rad, phi rad 
+Output 		x_FoamTop m, y_FoamTop m, x_FoamBottom m, y_FoamBottom m, AttachPt_x_WorldFrame m, AttachPt_y_WorldFrame m, x_hardstop m, x_Ccm m, y_Ccm m, x_top m, y_top m, x_bottom m, y_bottom m 
+Output		t, Ffoam_top, Ffoam_bottom, Fx_tail, T_tail, Fx_rebound, Fy_rebound, Fx_contact, Fy_contact, Fy_fricTop, Fy_fricBottom, F_hardstopTop, F_hardstopBottom
+Output  	t, FoamContactTop, FoamContactBottom, TailContact, FootAttached
+Output  	KineticEnergy J, KineticEnergy_body J, KineticEnergy_tail J, E_rebound J, E_tail J, GravityPotentialEnergy J 
+Output 		x' m/s, y' m/s, gamma' rad/sec, phi' rad/sec, x'' m/s, y'' m/s, gamma'' rad/sec, phi'' rad/sec
+Output 		Lx_body, Ly_body, H_body, Lx_tail, Ly_tail, H_tail
+
+%--------------------------------------------------------------------
+%   Output quantities for animation with Animake
+%Animate( N, No, A, B, C )
+%--------------------------------------------------------------------
+%   C/Matlab/Fortran code or immediate numerical solution.
+%   ODE( Zero, listOfVariablesToSolve ) [A=0,3,1; B=2,0,-.5] filename.m
+ODE() BerkeleyImpact_TallBody.m %Filename
+Quit
