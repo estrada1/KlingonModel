@@ -47,10 +47,10 @@ Constant 	d_body = 	10 cm 			% Elongating the body above the landing gear
 Constant	k_top = 	100 N/m			% Spring stiffness of top contact
 Constant 	b_top = 	1 N/m/s 		% Damping in top contact
 %Constant	l_arm = 	0.5 m  			% Length of arm
-Constant	k_tail = 	1 N 			% Rotational stiffness of tail
+Constant	k_tail = 	0.5 N 			% Rotational stiffness of tail
 Constant 	b_tail = 	0.01 N/s 			% Damping coefficient of tail rotational joint 
 Constant 	l_tail = 	0.23 m 			% Length of tail
-Constant 	mewTop = 	-0.1  			% Coefficient of fricton against wall at top contact
+Constant 	mewTop = 	-0.001  			% Coefficient of fricton against wall at top contact
 Constant 	mewBottom = -0.1 			% Coefficient of fricton against wall at bottom contact
 Constant 	l_rebound = 0.02 m 			% Resting length of rebound spring
 Constant 	l_foam = 	0.02 m 			% Resting length of foam 
@@ -158,10 +158,16 @@ AttachPt_y' = -FootAttached*y'
 %   Calculate Forces
 % 	Convention is to incorporate direction (the sign) here (eg +/- Nx)
 
-Ffoam_top = -FoamContactTop*(k_foam*dot(AfoamTop.GetPosition(No),Nx>) + b_foam*dot(AfoamTop.GetVelocity(N),Nx>))
-Ffoam_bottom = -FoamContactBottom*(k_foam*dot(AfoamBottom.GetPosition(No),Nx>) + b_foam*dot(AfoamBottom.GetVelocity(N),Nx>))
-F_hardstopTop = -HardstopContactTop*(k_top*dot(AhardstopTop.GetPosition(No),Nx>) + b_hardstop*dot(AhardstopTop.GetVelocity(N), Nx>))
-F_hardstopBottom = -HardstopContactBottom*(k_hardstop*dot(AhardstopBottom.GetPosition(No),Nx>) + b_hardstop*dot(AhardstopBottom.GetVelocity(N), Nx>))
+%% FIX THIS RIGHT HERE 
+
+
+%Ffoam_top = -FoamContactTop*(k_foam*dot(AfoamTop.GetPosition(No),Nx>) + b_foam*dot(AfoamTop.GetVelocity(N),Nx>))
+%Ffoam_bottom = -FoamContactBottom*(k_foam*dot(AfoamBottom.GetPosition(No),Nx>) + b_foam*dot(AfoamBottom.GetVelocity(N),Nx>))
+
+HardstopTopCompress = ceil(sign( dot(AhardstopTop.GetVelocity(N), Nx>) )/2) 
+F_hardstopTop = -HardstopContactTop*(k_top*dot(AhardstopTop.GetPosition(No),Nx>) + b_top*dot(AhardstopTop.GetVelocity(N), Nx>)*HardstopTopCompress )
+HardstopBottomCompress = ceil(sign( dot(AhardstopBottom.GetVelocity(N), Nx>) )/2) 
+F_hardstopBottom = -HardstopContactBottom*(k_hardstop*dot(AhardstopBottom.GetPosition(No),Nx>) + b_hardstop*dot(AhardstopBottom.GetVelocity(N), Nx>)*HardstopBottomCompress )
 
 %Fy_fricTop = (Ffoam_top+F_hardstopTop)*mew*( -sign( dot( AhardstopTop.GetVelocity(N), Ny> ) ) )
 %Fy_fricBottom = (Ffoam_bottom+F_hardstopBottom)*mew*( -sign( dot( AhardstopBottom.GetVelocity(N), Ny> ) ) )
@@ -173,18 +179,22 @@ Fy_fricTop = (F_hardstopTop)*mewTop*( -vTop/(abs(vTop) + .000001) )
 Fy_fricBottom = (Ffoam_bottom+F_hardstopBottom)*mewBottom*( -vBottom/(abs(vBottom) + .000001) )
 
 % Tail normal/friction force
-Fx_tail = -TailContact*(k_hardstop*dot(Q.GetPosition(No), Nx>) + b_hardstop*dot(Q.GetVelocity(N),Nx>) ) 
+TailCompress = ceil(sign( dot(Q.GetVelocity(N), Nx>) )/2) 
+Fx_tail = -TailContact*(k_hardstop*dot(Q.GetPosition(No), Nx>) + b_hardstop*dot(Q.GetVelocity(N),Nx>)*TailCompress )
 Fy_tail = mewBottom*( -sign( dot( Q.GetVelocity(N), Ny> ) ) )*Fx_tail
 
 % 150:1 pololu gear motor stall torque is 0.28 Nm
 T_tail = -k_tail*(phi-phin) - b_tail*phi'
 
 % This last, complicated expression is a way to find the angle at the preloaded rebound spring force is acting
-%rebound_x = (1 - FootContact)*dot(AttachPt.GetPosition(Afoot), Nx>)
-rebound_x = dot(AttachPt.GetPosition(Afoot), Nx>)
+%rebound_x = dot(AttachPt.GetPosition(Afoot), Nx>)
+rebound_x = (1 - FootContact)*dot(AttachPt.GetPosition(Afoot), Nx>)
 rebound_y = dot(AttachPt.GetPosition(Afoot), Ny>)
-Fx_rebound = FootAttached*(k_rebound*rebound_x + Fpre_rebound*rebound_x/(AttachPt.GetDistance(Afoot)+.00000001))
-Fy_rebound = FootAttached*(k_rebound*rebound_y + Fpre_rebound*rebound_y/(AttachPt.GetDistance(Afoot)+.00000001))
+
+rebound_mag = sqrt(rebound_x^2 + rebound_y^2)
+
+Fx_rebound = FootAttached*(k_rebound*rebound_x + Fpre_rebound*rebound_x/(rebound_mag +.00000001))
+Fy_rebound = FootAttached*(k_rebound*rebound_y + Fpre_rebound*rebound_y/(rebound_mag +.00000001))
 
 %--------------------------------------------------------------------
 %   Add relevant contact and distance forces
@@ -232,7 +242,7 @@ Fmag_rebound = sqrt(Fx_rebound^2 + Fy_rebound^2) % Magnitude of rebound spring
 
 % Fcontact is what would be measured if the wall were a force plate
 Fx_contact = Ffoam_top + Ffoam_bottom + Fx_tail + Fx_rebound + F_hardstopTop + F_hardstopBottom
-Fy_contact = Fy_rebound + Fy_fricTop + Fy_fricBottom
+Fy_contact = Fy_rebound + Fy_fricTop + Fy_fricBottom + Fy_tail
 
 
 %--------------------------------------------------------------------
@@ -245,7 +255,7 @@ KineticEnergy_body = A.GetKineticEnergy()
 KineticEnergy_tail = Q.GetKineticEnergy()
 
 % Specific Components
-E_rebound = ( Fpre_rebound + 1/2*k_rebound*AttachPt.GetDistance(Afoot) )*(AttachPt.GetDistance(Afoot))
+E_rebound = ( Fpre_rebound + 1/2*k_rebound*rebound_mag)*(rebound_mag)
 E_tail = 1/2*k_tail*(phi-phin)^2
 
 
@@ -253,9 +263,9 @@ E_tail = 1/2*k_tail*(phi-phin)^2
 %FootPotentialEnergy 	= 1/2*k_foot*x^2*FootContact
 %TailPotentialEnergy 	= 1/2*k_tail*phi^2
 
-ReboundPotentialEnergy 	= 1/2*k_rebound*sqrt(rebound_x^2 + rebound_y^2)
-SpringPotentialEnergy 	= ReboundPotentialEnergy
-MechanicalEnergy 		= KineticEnergy + GravityPotentialEnergy %+ SpringPotentialEnergy
+%ReboundPotentialEnergy 	= 1/2*k_rebound*sqrt(rebound_x^2 + rebound_y^2)
+%SpringPotentialEnergy 	= ReboundPotentialEnergy
+%MechanicalEnergy 		= KineticEnergy + GravityPotentialEnergy %+ SpringPotentialEnergy
 %H> = System.GetAngularMomentum(Point)
 %L> = System.GetLinearMomentum()
 %P =  System.GetGeneralizedMomentum()
@@ -284,7 +294,6 @@ Input  x=-.1 m, 			x' = 1 m/sec
 Input  y= 4 m, 				y'= .25 m/sec
 Input  gamma= -35 deg, 		gamma'=0 rad/sec 	% Body initial angle
 Input  phi= 90 deg , 		phi'=0 rad/sec 		% Tail initial angle
-Input  AttachPt_x =0, 		AttachPt_y = 0 		% Attachment point integration starts at zero
 %--------------------------------------------------------------------
 %   Specified expressions
 %--------------------------------------------------------------------
@@ -292,7 +301,7 @@ Input  AttachPt_x =0, 		AttachPt_y = 0 		% Attachment point integration starts a
 %Output  	t sec, x m, y m, Fx_foot Newton, theta degree, gamma degree
 Output 		t sec, x m, y m, x_Acm m, y_Acm m, x_tail m, y_tail m, gamma rad, phi rad 
 Output 		x_FoamTop m, y_FoamTop m, x_FoamBottom m, y_FoamBottom m, AttachPt_x_WorldFrame m, AttachPt_y_WorldFrame m, x_hardstop m, x_Ccm m, y_Ccm m, x_top m, y_top m, x_bottom m, y_bottom m 
-Output		t, Ffoam_top, Ffoam_bottom, Fx_tail, T_tail, Fx_rebound, Fy_rebound, Fx_contact, Fy_contact, Fy_fricTop, Fy_fricBottom, F_hardstopTop, F_hardstopBottom
+Output		t, Ffoam_top, Ffoam_bottom, Fx_tail, Fy_tail, T_tail, Fx_rebound, Fy_rebound, Fx_contact, Fy_contact, Fy_fricTop, Fy_fricBottom, F_hardstopTop, F_hardstopBottom
 Output  	t, FoamContactTop, FoamContactBottom, TailContact, FootAttached
 Output  	KineticEnergy J, KineticEnergy_body J, KineticEnergy_tail J, E_rebound J, E_tail J, GravityPotentialEnergy J 
 Output 		x' m/s, y' m/s, gamma' rad/sec, phi' rad/sec, x'' m/s, y'' m/s, gamma'' rad/sec, phi'' rad/sec

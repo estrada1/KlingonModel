@@ -1,4 +1,4 @@
-function [t,Ffoam_top,Ffoam_bottom,Fx_tail,T_tail,Fx_rebound, Fy_rebound, Fx_contact, Fy_contact, Fy_fricTop, Fy_fricBottom,F_hardstopTop, F_hardstopBottom] = BerkeleyImpact_import3_forces(filename, startRow, endRow)
+function [t,Ffoam_top,Ffoam_bottom,Fx_tail, Fy_tail, T_tail,Fx_rebound, Fy_rebound, Fx_contact, Fy_contact, Fy_fricTop, Fy_fricBottom,F_hardstopTop, F_hardstopBottom] = BerkeleyImpact_import3_forces(filename, startRow, endRow)
 %IMPORTFILE Import numeric data from a text file as column vectors.
 %   [T,FFOAM_TOP,FFOAM_BOTTOM,FX_TAIL,T_TAIL,FMAG_REBOUND] =
 %   IMPORTFILE(FILENAME) Reads data from text file FILENAME for the default
@@ -31,7 +31,7 @@ end
 %	column6: double (%f)
 %	column7: double (%f)
 % For more information, see the TEXTSCAN documentation.
-formatSpec = '%14f%15f%15f%15f%15f%15f%15f%15f%15f%15f%15f%15f%15f%[^\n\r]';
+formatSpec = '%14f%15f%15f%15f%15f%15f%15f%15f%15f%15f%15f%15f%15f%15f%[^\n\r]';
 
 %% Open the text file.
 fileID = fopen(filename,'r');
@@ -65,13 +65,14 @@ t = dataArray{:, 1};
 Ffoam_top = dataArray{:, 2};
 Ffoam_bottom = dataArray{:, 3};
 Fx_tail = dataArray{:, 4};
-T_tail = dataArray{:, 5};
-Fx_rebound = dataArray{:, 6};
-Fy_rebound = dataArray{:, 7};
-Fx_contact = dataArray{:, 8};
-Fy_contact = dataArray{:, 9};
-Fy_fricTop = dataArray{:, 10};
-Fy_fricBottom = dataArray{:, 11};
-F_hardstopTop = dataArray{:, 12};
-F_hardstopBottom = dataArray{:, 13};
+Fy_tail = dataArray{:, 5};
+T_tail = dataArray{:, 6};
+Fx_rebound = dataArray{:, 7};
+Fy_rebound = dataArray{:, 8};
+Fx_contact = dataArray{:, 9};
+Fy_contact = dataArray{:, 10};
+Fy_fricTop = dataArray{:, 11};
+Fy_fricBottom = dataArray{:, 12};
+F_hardstopTop = dataArray{:, 13};
+F_hardstopBottom = dataArray{:, 14};
 

@@ -1,6 +1,6 @@
 function [t,VAR,Output] = BerkeleyImpact_TallBody
 %===========================================================================
-% File: BerkeleyImpact_TallBody.m created on Thu Oct  1 2015 by MotionGenesis 5.7.
+% File: BerkeleyImpact_TallBody.m created on Wed Oct  7 2015 by MotionGenesis 5.7.
 % Advanced Student Licensee: Matt Estrada (until December 2015).
 % Portions copyright (c) 2009-2015 Motion Genesis LLC.  Rights reserved.
 % Paid-up MotionGenesis Advanced Student licensees are granted the right
@@ -14,30 +14,32 @@ function [t,VAR,Output] = BerkeleyImpact_TallBody
 % whether in an action of contract, tort, or otherwise, arising from, out of, or
 % in connection with the software or the use or other dealings in the software. 
 %===========================================================================
+%  FIX THIS RIGHT HERE
+%===========================================================================
 eventDetectedByIntegratorTerminate1OrContinue0 = [];
-mewBottom=0; mewTop=0; gammapp=0; phipp=0; xpp=0; ypp=0; Ffoam_bottom=0; Ffoam_top=0; Fx_tail=0; Fy_tail=0; T_tail=0; AttachPt_xp=0; AttachPt_yp=0; AttachPt_x_WorldFrame=0; AttachPt_y_WorldFrame=0; E_rebound=0; E_tail=0; FoamContactBottom=0;
- FoamContactTop=0; FootAttached=0; FootContact=0; Fx_contact=0; Fx_rebound=0; Fy_contact=0; Fy_fricBottom=0; Fy_fricTop=0; Fy_rebound=0; F_hardstopBottom=0; F_hardstopTop=0; GravityPotentialEnergy=0; HardstopContactBottom=0; HardstopContactTop=0;
- H_body=0; H_tail=0; KineticEnergy=0; KineticEnergy_body=0; KineticEnergy_tail=0; Lx_body=0; Lx_tail=0; Ly_body=0; Ly_tail=0; TailContact=0; vBottom=0; vTop=0; x_Acm=0; x_bottom=0; x_Ccm=0; x_FoamBottom=0; x_FoamTop=0; x_hardstop=0; x_tail=0;
- x_top=0; y_Acm=0; y_bottom=0; y_Ccm=0; y_FoamBottom=0; y_FoamTop=0; y_tail=0; y_top=0;
+Ffoam_bottom=0; Ffoam_top=0;
+mewBottom=0; mewTop=0; gammapp=0; phipp=0; xpp=0; ypp=0; Fx_tail=0; Fy_tail=0; T_tail=0; AttachPt_xp=0; AttachPt_yp=0; AttachPt_x_WorldFrame=0; AttachPt_y_WorldFrame=0; E_rebound=0; E_tail=0; FoamContactBottom=0; FoamContactTop=0; FootAttached=0;
+ FootContact=0; Fx_contact=0; Fx_rebound=0; Fy_contact=0; Fy_fricBottom=0; Fy_fricTop=0; Fy_rebound=0; F_hardstopBottom=0; F_hardstopTop=0; GravityPotentialEnergy=0; HardstopBottomCompress=0; HardstopContactBottom=0; HardstopContactTop=0;
+ HardstopTopCompress=0; H_body=0; H_tail=0; KineticEnergy=0; KineticEnergy_body=0; KineticEnergy_tail=0; Lx_body=0; Lx_tail=0; Ly_body=0; Ly_tail=0; rebound_mag=0; rebound_x=0; TailCompress=0; TailContact=0; vBottom=0; vTop=0; x_Acm=0;
+ x_bottom=0; x_Ccm=0; x_FoamBottom=0; x_FoamTop=0; x_hardstop=0; x_tail=0; x_top=0; y_Acm=0; y_bottom=0; y_Ccm=0; y_FoamBottom=0; y_FoamTop=0; y_tail=0; y_top=0;
 
 
 %-------------------------------+--------------------------+-------------------+-----------------
 % Quantity                      | Value                    | Units             | Description
 %-------------------------------|--------------------------|-------------------|-----------------
 Awidth                          =  3;                      % cm                  Constant
-b_foam                          =  0;                    % N*sec/m             Constant
-b_hardstop                      =  0;                     % N/m/s               Constant
-b_tail                          =  0;                   % N/s                 Constant
+b_hardstop                      =  25;                     % N/m/s               Constant
+b_tail                          =  0.01;                   % N/s                 Constant
+b_top                           =  1;                      % N/m/s               Constant
 d_body                          =  10;                     % cm                  Constant
 d_foam                          =  3;                      % cm                  Constant
 Fpre_rebound                    =  4;                      % N                   Constant
 g                               =  9.80665;                % m/sec^2             Constant
 IAzz                            =  2.90e-4;                % kg*m^2              Constant
 ICzz                            =  0.000002;               % kg*m^2              Constant
-k_foam                          =  85;                     % N/m                 Constant
 k_hardstop                      =  10000;                  % N/m                 Constant
 k_rebound                       =  14.28571428571428;      % N/m                 Constant
-k_tail                          =  1;                      % N                   Constant
+k_tail                          =  0.1;                    % N                   Constant
 k_top                           =  100;                    % N/m                 Constant
 l_foam                          =  0.02;                   % m                   Constant
 l_tail                          =  0.23;                   % m                   Constant
@@ -54,8 +56,8 @@ gammap                          =  0;                      % rad/sec            
 phip                            =  0;                      % rad/sec             Initial Value
 xp                              =  1;                      % m/sec               Initial Value
 yp                              =  .25;                    % m/sec               Initial Value
-AttachPt_x                      =  0;                      % UNITS               Initial Value
-AttachPt_y                      =  0;                      % UNITS               Initial Value
+AttachPt_x                      =  0.0;                    % UNITS               Initial Value
+AttachPt_y                      =  0.0;                    % UNITS               Initial Value
 
 tInitial                        =  0.0;                    % second              Initial Time
 tFinal                          =  0.5;                    % sec                 Final Time
@@ -77,8 +79,8 @@ gamma = gamma * DEGtoRAD;
 phi = phi * DEGtoRAD;
 
 % Evaluate constants
-mewTop = -0;
-mewBottom = -0;
+mewTop = -0.001;
+mewBottom = -0.1;
 
 
 VAR = SetMatrixFromNamedQuantities;
@@ -92,29 +94,34 @@ function sys = mdlDerivatives( t, VAR, uSimulink )
 %===========================================================================
 SetNamedQuantitiesFromMatrix( VAR );
 FootContact = ceil(0.5*sign(x));
-FoamContactBottom = ceil(0.5*sign(x+d_foam*sin(gamma)));
 HardstopContactTop = ceil(0.5*sign(x-l_foam*cos(gamma)-(d_body+d_foam)*sin(gamma)));
 HardstopContactBottom = ceil(0.5*sign(x+d_foam*sin(gamma)-l_foam*cos(gamma)));
 TailContact = ceil(0.5*sign(x-l_tail*cos(gamma+phi)-(Awidth+l_foam)*cos(gamma)));
 FootAttached = ceil(0.5*sign(sqrt(AttachPt_x^2+AttachPt_y^2))+0.5*FootContact);
-F_hardstopTop = -HardstopContactTop*(k_top*(x-l_foam*cos(gamma)-(d_body+d_foam)*sin(gamma))+b_hardstop*(xp+l_foam*sin(gamma)*gammap-(d_body+d_foam)*cos(gamma)*gammap));
-F_hardstopBottom = -HardstopContactBottom*(k_hardstop*(x+d_foam*sin(gamma)-l_foam*cos(gamma))+b_hardstop*(xp+d_foam*cos(gamma)*gammap+l_foam*sin(gamma)*gammap));
+HardstopTopCompress = ceil(0.5*sign(xp+l_foam*sin(gamma)*gammap-(d_body+d_foam)*cos(gamma)*gammap));
+F_hardstopTop = -HardstopContactTop*(k_top*(x-l_foam*cos(gamma)-(d_body+d_foam)*sin(gamma))+b_top*(xp+l_foam*sin(gamma)*gammap-(d_body+d_foam)*cos(gamma)*gammap)*HardstopTopCompress);
+HardstopBottomCompress = ceil(0.5*sign(xp+d_foam*cos(gamma)*gammap+l_foam*sin(gamma)*gammap));
+F_hardstopBottom = -HardstopContactBottom*(k_hardstop*(x+d_foam*sin(gamma)-l_foam*cos(gamma))+b_hardstop*(xp+d_foam*cos(gamma)*gammap+l_foam*sin(gamma)*gammap)*HardstopBottomCompress);
 vTop = yp - l_foam*cos(gamma)*gammap - (d_body+d_foam)*sin(gamma)*gammap;
 vBottom = yp + d_foam*sin(gamma)*gammap - l_foam*cos(gamma)*gammap;
 Fy_fricTop = -mewTop*F_hardstopTop*vTop/(1.0E-6+abs(vTop));
-Fx_rebound = AttachPt_x*(k_rebound+Fpre_rebound/(1.0E-8+sqrt(AttachPt_x^2+AttachPt_y^2)))*FootAttached;
-Fy_rebound = AttachPt_y*(k_rebound+Fpre_rebound/(1.0E-8+sqrt(AttachPt_x^2+AttachPt_y^2)))*FootAttached;
+TailCompress = ceil(0.5*sign(xp+(Awidth+l_foam)*sin(gamma)*gammap+l_tail*sin(gamma+phi)*(gammap+phip)));
+rebound_x = AttachPt_x*(1-FootContact);
+rebound_mag = sqrt(AttachPt_y^2+rebound_x^2);
+Fx_rebound = FootAttached*rebound_x*(k_rebound+Fpre_rebound/(1.0E-8+rebound_mag));
+Fy_rebound = AttachPt_y*FootAttached*(k_rebound+Fpre_rebound/(1.0E-8+rebound_mag));
 
 % Quantities that were specified
 T_tail = k_tail*(phin-phi) - b_tail*phip;
-FoamContactTop = ceil(0.5*sign(x-d_foam*sin(gamma)));
-Ffoam_top = -FoamContactTop*(k_foam*(x-d_foam*sin(gamma))+b_foam*(xp-d_foam*cos(gamma)*gammap));
-Ffoam_bottom = -FoamContactBottom*(k_foam*(x+d_foam*sin(gamma))+b_foam*(xp+d_foam*cos(gamma)*gammap));
-Fx_tail = -TailContact*(k_hardstop*(x-l_tail*cos(gamma+phi)-(Awidth+l_foam)*cos(gamma))+b_hardstop*(xp+(Awidth+l_foam)*sin(gamma)*gammap+l_tail*sin(gamma+phi)*(gammap+phip)));
+Fx_tail = -TailContact*(k_hardstop*(x-l_tail*cos(gamma+phi)-(Awidth+l_foam)*cos(gamma))+b_hardstop*(xp+(Awidth+l_foam)*sin(gamma)*gammap+l_tail*sin(gamma+phi)*(gammap+phip))*TailCompress);
 Fy_tail = -mewBottom*Fx_tail*sign(yp-(Awidth+l_foam)*cos(gamma)*gammap-l_tail*cos(gamma+phi)*(gammap+phip));
 AttachPt_xp = -FootAttached*xp;
 AttachPt_yp = -FootAttached*yp;
 
+
+% Quantities to be specified
+Ffoam_bottom = 0;
+Ffoam_top = 0;
 Fy_fricBottom = -mewBottom*vBottom*(Ffoam_bottom+F_hardstopBottom)/(1.0E-6+abs(vBottom));
 xpp = ((l_tail*mQ*sin(gamma+phi)*(IAzz+ICzz+mA*(Awidth+l_foam)^2+mC*(Awidth+l_foam)^2+mQ*(l_tail^2+(Awidth+l_foam)^2+2*l_tail*(Awidth+l_foam)*cos(phi)))-l_tail*mQ*(Awidth+l_foam)*sin(phi)*(mA*(Awidth+l_foam)*cos(gamma)+mC*(Awidth+  ...
 l_foam)*cos(gamma)+mQ*(l_tail*cos(gamma+phi)+(Awidth+l_foam)*cos(gamma)))-(ICzz+l_tail*mQ*(l_tail+(Awidth+l_foam)*cos(phi)))*(mA*(Awidth+l_foam)*sin(gamma)+mC*(Awidth+l_foam)*sin(gamma)+mQ*(l_tail*sin(gamma+phi)+(Awidth+l_foam)*sin(  ...
@@ -256,6 +263,8 @@ end
 %===========================================================================
 function Output = mdlOutputs( t, VAR, uSimulink )
 %===========================================================================
+FoamContactTop = ceil(0.5*sign(x-d_foam*sin(gamma)));
+FoamContactBottom = ceil(0.5*sign(x+d_foam*sin(gamma)));
 x_tail = x - l_tail*cos(gamma+phi) - (Awidth+l_foam)*cos(gamma);
 y_tail = y - l_tail*sin(gamma+phi) - (Awidth+l_foam)*sin(gamma);
 x_Acm = x - (Awidth+l_foam)*cos(gamma);
@@ -274,7 +283,7 @@ y_bottom = y - d_foam*cos(gamma) - l_foam*sin(gamma);
 AttachPt_x_WorldFrame = AttachPt_x + x;
 AttachPt_y_WorldFrame = AttachPt_y + y;
 Fx_contact = Ffoam_bottom + Ffoam_top + Fx_tail + Fx_rebound + F_hardstopBottom + F_hardstopTop;
-Fy_contact = Fy_rebound + Fy_fricBottom + Fy_fricTop;
+Fy_contact = Fy_tail + Fy_rebound + Fy_fricBottom + Fy_fricTop;
 KineticEnergy = 0.5*IAzz*gammap^2 + 0.5*ICzz*(gammap+phip)^2 + 0.5*mA*(xp^2+yp^2+(Awidth+l_foam)^2*gammap^2+2*(Awidth+l_foam)*sin(gamma)*gammap*xp-2*(Awidth+l_foam)*cos(gamma)*gammap*yp) + 0.5*mC*(xp^2+yp^2+(Awidth+l_foam)^2*gammap^2+2*(  ...
 Awidth+l_foam)*sin(gamma)*gammap*xp-2*(Awidth+l_foam)*cos(gamma)*gammap*yp) - 0.5*mQ*(2*(Awidth+l_foam)*cos(gamma)*gammap*yp+2*l_tail*cos(gamma+phi)*yp*(gammap+phip)-xp^2-yp^2-(Awidth+l_foam)^2*gammap^2-l_tail^2*(gammap+phip)^2-2*(  ...
 Awidth+l_foam)*sin(gamma)*gammap*xp-2*l_tail*sin(gamma+phi)*xp*(gammap+phip)-2*l_tail*(Awidth+l_foam)*cos(phi)*gammap*(gammap+phip));
@@ -282,7 +291,7 @@ GravityPotentialEnergy = g*(mA*(y-(Awidth+l_foam)*sin(gamma))+mC*(y-(Awidth+l_fo
 KineticEnergy_body = 0.5*IAzz*gammap^2 + 0.5*mA*(xp^2+yp^2+(Awidth+l_foam)^2*gammap^2+2*(Awidth+l_foam)*sin(gamma)*gammap*xp-2*(Awidth+l_foam)*cos(gamma)*gammap*yp);
 KineticEnergy_tail = -0.5*mQ*(2*(Awidth+l_foam)*cos(gamma)*gammap*yp+2*l_tail*cos(gamma+phi)*yp*(gammap+phip)-xp^2-yp^2-(Awidth+l_foam)^2*gammap^2-l_tail^2*(gammap+phip)^2-2*(Awidth+l_foam)*sin(gamma)*gammap*xp-2*l_tail*sin(gamma+phi)*  ...
 xp*(gammap+phip)-2*l_tail*(Awidth+l_foam)*cos(phi)*gammap*(gammap+phip));
-E_rebound = 0.5*sqrt(AttachPt_x^2+AttachPt_y^2)*(2*Fpre_rebound+k_rebound*sqrt(AttachPt_x^2+AttachPt_y^2));
+E_rebound = 0.5*rebound_mag*(2*Fpre_rebound+k_rebound*rebound_mag);
 E_tail = 0.5*k_tail*(phin-phi)^2;
 Lx_body = mA*(xp+(Awidth+l_foam)*sin(gamma)*gammap);
 Ly_body = mA*(yp-(Awidth+l_foam)*cos(gamma)*gammap);
@@ -292,7 +301,7 @@ Ly_tail = mQ*(yp-(Awidth+l_foam)*cos(gamma)*gammap-l_tail*cos(gamma+phi)*(gammap
 H_tail = -mQ*(y*xp+l_tail*cos(gamma+phi)*yp+(Awidth+l_foam)*cos(gamma)*yp+l_tail*x*cos(gamma+phi)*(gammap+phip)+l_tail*y*sin(gamma+phi)*(gammap+phip)-x*yp-l_tail^2*(gammap+phip)-l_tail*sin(gamma+phi)*xp-(Awidth+l_foam)*sin(gamma)*xp-  ...
 l_tail*(Awidth+l_foam)*cos(phi)*(phip+2*gammap)-(Awidth+l_foam)*(Awidth+l_foam-x*cos(gamma)-y*sin(gamma))*gammap);
 
-Output = zeros(1,60);
+Output = zeros(1,61);
 Output(1) = t;
 Output(2) = x;
 Output(3) = y;
@@ -321,44 +330,45 @@ Output(23) = t;
 Output(24) = Ffoam_top;
 Output(25) = Ffoam_bottom;
 Output(26) = Fx_tail;
-Output(27) = T_tail;
-Output(28) = Fx_rebound;
-Output(29) = Fy_rebound;
-Output(30) = Fx_contact;
-Output(31) = Fy_contact;
-Output(32) = Fy_fricTop;
-Output(33) = Fy_fricBottom;
-Output(34) = F_hardstopTop;
-Output(35) = F_hardstopBottom;
+Output(27) = Fy_tail;
+Output(28) = T_tail;
+Output(29) = Fx_rebound;
+Output(30) = Fy_rebound;
+Output(31) = Fx_contact;
+Output(32) = Fy_contact;
+Output(33) = Fy_fricTop;
+Output(34) = Fy_fricBottom;
+Output(35) = F_hardstopTop;
+Output(36) = F_hardstopBottom;
 
-Output(36) = t;
-Output(37) = FoamContactTop;
-Output(38) = FoamContactBottom;
-Output(39) = TailContact;
-Output(40) = FootAttached;
+Output(37) = t;
+Output(38) = FoamContactTop;
+Output(39) = FoamContactBottom;
+Output(40) = TailContact;
+Output(41) = FootAttached;
 
-Output(41) = KineticEnergy;
-Output(42) = KineticEnergy_body;
-Output(43) = KineticEnergy_tail;
-Output(44) = E_rebound;
-Output(45) = E_tail;
-Output(46) = GravityPotentialEnergy;
+Output(42) = KineticEnergy;
+Output(43) = KineticEnergy_body;
+Output(44) = KineticEnergy_tail;
+Output(45) = E_rebound;
+Output(46) = E_tail;
+Output(47) = GravityPotentialEnergy;
 
-Output(47) = xp;
-Output(48) = yp;
-Output(49) = gammap;
-Output(50) = phip;
-Output(51) = xpp;
-Output(52) = ypp;
-Output(53) = gammapp;
-Output(54) = phipp;
+Output(48) = xp;
+Output(49) = yp;
+Output(50) = gammap;
+Output(51) = phip;
+Output(52) = xpp;
+Output(53) = ypp;
+Output(54) = gammapp;
+Output(55) = phipp;
 
-Output(55) = Lx_body;
-Output(56) = Ly_body;
-Output(57) = H_body;
-Output(58) = Lx_tail;
-Output(59) = Ly_tail;
-Output(60) = H_tail;
+Output(56) = Lx_body;
+Output(57) = Ly_body;
+Output(58) = H_body;
+Output(59) = Lx_tail;
+Output(60) = Ly_tail;
+Output(61) = H_tail;
 end
 
 
@@ -398,8 +408,8 @@ if( isempty(hasHeaderInformationBeenWritten) ),
       fprintf(FileIdentifier(2), '%%      (m)            (m)            (m)            (m)                (m)                   (m)               (m)            (m)            (m)            (m)            (m)            (m)            (m)\n\n' );
       FileIdentifier(3) = fopen('BerkeleyImpact_TallBody.3', 'wt');   if( FileIdentifier(3) == -1 ), error('Error: unable to open file BerkeleyImpact_TallBody.3'); end
       fprintf(FileIdentifier(3), '%% FILE: BerkeleyImpact_TallBody.3\n%%\n' );
-      fprintf(FileIdentifier(3), '%%       t          Ffoam_top    Ffoam_bottom      Fx_tail        T_tail       Fx_rebound     Fy_rebound     Fx_contact     Fy_contact     Fy_fricTop    Fy_fricBottom  F_hardstopTop F_hardstopBottom\n' );
-      fprintf(FileIdentifier(3), '%%   (second)        (UNITS)        (UNITS)        (UNITS)        (UNITS)        (UNITS)        (UNITS)        (UNITS)        (UNITS)        (UNITS)        (UNITS)        (UNITS)         (UNITS)\n\n' );
+      fprintf(FileIdentifier(3), '%%       t          Ffoam_top    Ffoam_bottom      Fx_tail        Fy_tail        T_tail       Fx_rebound     Fy_rebound     Fx_contact     Fy_contact     Fy_fricTop    Fy_fricBottom  F_hardstopTop F_hardstopBottom\n' );
+      fprintf(FileIdentifier(3), '%%   (second)        (UNITS)        (UNITS)        (UNITS)        (UNITS)        (UNITS)        (UNITS)        (UNITS)        (UNITS)        (UNITS)        (UNITS)        (UNITS)        (UNITS)         (UNITS)\n\n' );
       FileIdentifier(4) = fopen('BerkeleyImpact_TallBody.4', 'wt');   if( FileIdentifier(4) == -1 ), error('Error: unable to open file BerkeleyImpact_TallBody.4'); end
       fprintf(FileIdentifier(4), '%% FILE: BerkeleyImpact_TallBody.4\n%%\n' );
       fprintf(FileIdentifier(4), '%%       t       FoamContactTop  FoamContactBottom  TailContact   FootAttached\n' );
@@ -423,11 +433,11 @@ end
 if( shouldPrintToScreen ), WriteNumericalData( 1,                 Output(1:9) );  end
 if( shouldPrintToFile ),   WriteNumericalData( FileIdentifier(1), Output(1:9) );  end
 if( shouldPrintToFile ),   WriteNumericalData( FileIdentifier(2), Output(10:22) );  end
-if( shouldPrintToFile ),   WriteNumericalData( FileIdentifier(3), Output(23:35) );  end
-if( shouldPrintToFile ),   WriteNumericalData( FileIdentifier(4), Output(36:40) );  end
-if( shouldPrintToFile ),   WriteNumericalData( FileIdentifier(5), Output(41:46) );  end
-if( shouldPrintToFile ),   WriteNumericalData( FileIdentifier(6), Output(47:54) );  end
-if( shouldPrintToFile ),   WriteNumericalData( FileIdentifier(7), Output(55:60) );  end
+if( shouldPrintToFile ),   WriteNumericalData( FileIdentifier(3), Output(23:36) );  end
+if( shouldPrintToFile ),   WriteNumericalData( FileIdentifier(4), Output(37:41) );  end
+if( shouldPrintToFile ),   WriteNumericalData( FileIdentifier(5), Output(42:47) );  end
+if( shouldPrintToFile ),   WriteNumericalData( FileIdentifier(6), Output(48:55) );  end
+if( shouldPrintToFile ),   WriteNumericalData( FileIdentifier(7), Output(56:61) );  end
 end
 
 
@@ -513,10 +523,6 @@ while 1,
    end
 end
 end
-
-
-
-
 
 %================================================
 end    % End of function BerkeleyImpact_TallBody
