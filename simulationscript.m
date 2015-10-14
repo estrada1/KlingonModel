@@ -9,6 +9,7 @@ mkdir(batch,time)
 
 %% Run simulation 
 eval(filename);
+
 %%
 exportdirectory = [batch '/' time]; % Save video/images for the trial
 exportpath = [exportdirectory '/' trial];
@@ -19,15 +20,16 @@ animateImpact(MGworkspace, exportpath);
 
 %% Performance Spec's 
 
-ReboundMag = sqrt(Fx_rebound.^2 + Fy_rebound.^2);
-MaxCompression = min(Fx_contact)
-tMaxCompression = t(find(Fx_contact == MaxCompression,1))
-MaxRebound = max(ReboundMag)
-tMaxRebound = t(find(ReboundMag == MaxRebound,1))
-
-%% Plot interesting values 
-
 load(MGworkspace); 
+
+ReboundMag = sqrt(Fx_rebound.^2 + Fy_rebound.^2);
+MaxCompression = min(Fx_contact);
+tMaxCompression = t(find(Fx_contact == MaxCompression,1));
+MaxRebound = max(ReboundMag);
+tMaxRebound = t(find(ReboundMag == MaxRebound,1));
+
+% Plot interesting values 
+
 
 figure(2)
 plot(t,Fx_contact, t, Fy_contact, t, Fx_rebound, t, Fy_rebound, t, ReboundMag, t, T_tail)

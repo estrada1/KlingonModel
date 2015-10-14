@@ -1,4 +1,4 @@
-function [t,VAR,Output] = BerkeleyImpact_TallBody
+function [t,VAR,Output] = BerkeleyImpact_TallBody(m, l, k, zeta)
 %===========================================================================
 % File: BerkeleyImpact_TallBody.m created on Wed Oct  7 2015 by MotionGenesis 5.7.
 % Advanced Student Licensee: Matt Estrada (until December 2015).
@@ -29,7 +29,11 @@ mewBottom=0; mewTop=0; gammapp=0; phipp=0; xpp=0; ypp=0; Fx_tail=0; Fy_tail=0; T
 %-------------------------------|--------------------------|-------------------|-----------------
 Awidth                          =  3;                      % cm                  Constant
 b_hardstop                      =  25;                     % N/m/s               Constant
-b_tail                          =  0.01;                   % N/s                 Constant
+
+%b_tail                          =  0.01;                   % N/s                 Constant
+% Do this calculation to keep a uniform damping coefficient
+b_tail                          =  2*zeta*sqrt(m*l^2*k); 
+
 b_top                           =  1;                      % N/m/s               Constant
 d_body                          =  10;                     % cm                  Constant
 d_foam                          =  3;                      % cm                  Constant
@@ -39,13 +43,13 @@ IAzz                            =  2.90e-4;                % kg*m^2             
 ICzz                            =  0.000002;               % kg*m^2              Constant
 k_hardstop                      =  10000;                  % N/m                 Constant
 k_rebound                       =  14.28571428571428;      % N/m                 Constant
-k_tail                          =  0.1;                    % N                   Constant
+k_tail                          =  k;                    % N                   Constant
 k_top                           =  100;                    % N/m                 Constant
 l_foam                          =  0.02;                   % m                   Constant
-l_tail                          =  0.23;                   % m                   Constant
-mA                              =  .2;                     % kg                  Constant
+l_tail                          =  l;                   % m                   Constant
+mA                              =  .2-m;                     % kg                  Constant
 mC                              =  .00001;                 % kg                  Constant
-mQ                              =  .02;                    % kg                  Constant
+mQ                              =  m;                    % kg                  Constant
 phin                            =  90;                     % deg                 Constant
 
 gamma                           = -35;                     % deg                 Initial Value
